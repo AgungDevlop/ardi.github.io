@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Chat</title>
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    .chat-bubble {
+      max-width: 75%;
+      padding: 10px 15px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+      display: inline-block;
+      word-wrap: break-word;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .chat-bubble.user {
+      background-color: #2563eb; /* Blue */
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 0;
+    }
+
+    .chat-bubble.other {
+      background-color: #e5e7eb; /* Gray */
+      color: #1f2937;
+      align-self: flex-start;
+      border-bottom-left-radius: 0;
+    }
+
+    .chat-bubble .icon {
+      margin-right: 10px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+  <!-- Authorization Section -->
+  <div id="auth-section" class="w-full max-w-xs p-4 bg-white shadow-lg rounded-lg">
+    <h1 class="text-3xl font-semibold text-center mb-6 text-gray-700">Join Chat</h1>
+    <input id="username" type="text" placeholder="Enter your name" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-700">
+    <button id="joinChat" class="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition duration-300">
+      <i class="fas fa-sign-in-alt mr-2"></i>Join Chat
+    </button>
+  </div>
+
+  <!-- Chat Section -->
+  <div id="chat-section" class="hidden flex flex-col w-full max-w-4xl h-[90vh] bg-white rounded-lg shadow-lg">
+    <!-- Header -->
+    <div class="bg-blue-600 text-white py-4 px-6 rounded-t-lg flex justify-between items-center">
+      <h1 class="text-2xl font-semibold"><i class="fas fa-comments mr-2"></i>Live Chat</h1>
+      <span id="current-user" class="text-sm"></span>
+    </div>
+    <!-- Messages Container -->
+    <div id="messages" class="flex-1 p-4 overflow-y-auto bg-gray-100 flex flex-col space-y-4"></div>
+    <!-- Input Section -->
+    <div class="p-4 border-t bg-gray-50 flex">
+      <input id="messageInput" type="text" placeholder="Type your message..." class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-700">
+      <button onclick="sendMessage()" class="ml-4 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition duration-300">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    let socket;
+    let username;
+
+    // Handle join chat button
+    document.getElementById('joinChat').addEventListener('click', () => {
+      username = document.getElementById('username').value.trim();
+      if (username) {
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('chat-section').classList.remove('hidden');
+        document.getElementById('current-user').textContent = `Logged in as: ${username}`;
+
+        socket = io('ardi.agungbot.my.id'); // Replace with your server address
+        socket.emit('join', username);
+
+        // Listen for chat messages
+        socket.on('chat message', function (data) {
+          const messages = document.getElementById('messages');
+          const messageDiv = document.createElement('div');
+
+          // Create the icon
+          const icon = `<i class="fas fa-user-circle icon"></i>`;
+          
+          if (data.user === username) {
+            messageDiv.classList.add('chat-bubble', 'user', 'self-end');
+            messageDiv.innerHTML = `${icon}<strong>${data.user}</strong><br>${data.message}`;
+          } else {
+            messageDiv.classList.add('chat-bubble', 'other', 'self-start');
+            messageDiv.innerHTML = `${icon}<strong>${data.user}</strong><br>${data.message}`;
+          }
+
+          messages.appendChild(messageDiv);
+          messages.scrollTop = messages.scrollHeight;
+        });
+
+        // Listen for new users joining
+        socket.on('user joined', function (message) {
+          const messages = document.getElementById('messages');
+          const notificationDiv = document.createElement('div');
+          notificationDiv.classList.add('text-gray-500', 'text-sm', 'text-center');
+          notificationDiv.textContent = message;
+          messages.appendChild(notificationDiv);
+        });
+      } else {
+        alert('Please enter your name to join the chat');
+      }
+    });
+
+    // Send message function
+    function sendMessage() {
+      const messageInput = document.getElementById('messageInput');
+      const message = messageInput.value.trim();
+      if (message) {
+        socket.emit('chat message', { user: username, message: message });
+        messageInput.value = '';
+      }
+    }
+  </script>
+
+</body>
+</html>
